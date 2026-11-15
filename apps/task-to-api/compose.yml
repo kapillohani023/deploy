@@ -1,6 +1,7 @@
 services:
   task-to-api:
     image: ${TASK_TO_API_IMAGE:-ghcr.io/kapillohani023/task-to-api:latest}
+    pull_policy: missing
     restart: unless-stopped
     env_file:
       - /opt/apps/env/task-to-api.env

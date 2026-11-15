@@ -79,7 +79,7 @@ for app in $(app_names); do
   if image_present "$img"; then
     echo "    up $app ${extras}"
     # shellcheck disable=SC2086
-    compose up -d --no-deps "$app" $extras
+    compose up -d --no-deps --pull never "$app" $extras
     running+=("$app")
     # extras may be empty
     for s in $extras; do
@@ -92,7 +92,7 @@ done
 
 # Remove containers whose services disappeared from compose (e.g. a deleted app).
 echo "==> Reconciling (remove orphans)"
-compose up -d --remove-orphans --no-deps "${running[@]}"
+compose up -d --remove-orphans --no-deps --pull never "${running[@]}"
 
 if compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null 2>&1; then
   echo "==> Caddy reloaded"

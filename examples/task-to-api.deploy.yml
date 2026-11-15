@@ -8,6 +8,9 @@ on:
 
 jobs:
   deploy:
+    permissions:
+      contents: read
+      packages: write
     uses: kapillohani023/deploy/.github/workflows/app-deploy.yml@main
     with:
       service: task-to-api

@@ -60,6 +60,24 @@ The first app deploy works while the GHCR package is still private because
 the job logs into GHCR on the server with `GITHUB_TOKEN`. After the first
 success, make the package public (or later manual pulls will fail).
 
+## Manual deploy (no GitHub Actions)
+
+GitHub Actions is currently unavailable on this account. After `bootstrap.sh`
+and filling `/opt/apps/env/*.env` on the instance:
+
+```bash
+cd /opt/deploy
+git pull                    # if this tree is a clone of kapillohani023/deploy
+sudo chmod +x scripts/*.sh templates/docker-entrypoint.sh
+sudo bash scripts/add-swap.sh          # 4 GiB; needed on t3.small
+./scripts/manual-deploy.sh all         # or: streaks | task-to-api | portfolio
+```
+
+`manual-deploy.sh` clones each public app repo into `/opt/src/<name>`, builds
+`ghcr.io/kapillohani023/<name>:latest` locally (the tag compose already uses),
+starts that service without contacting GHCR, and reloads Caddy. Repo URLs
+live in `apps/<name>/source`. See STEPS.md.
+
 ## Pushing this repo the first time
 
 From the extracted tree (after you create the empty private repo

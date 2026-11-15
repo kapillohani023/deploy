@@ -9,6 +9,41 @@ that service. Do the secret and env steps before the first app-repo push.
 
 ---
 
+## Manual deploy right now (GitHub Actions unavailable)
+
+If the instance already ran `bootstrap.sh` and `/opt/apps/env/*.env` is filled,
+skip to these commands on the EC2 (as `ubuntu`):
+
+```bash
+cd /opt/deploy
+# If /opt/deploy is a git clone of the public repo:
+git pull origin main
+# If you applied a patch instead: git apply /path/to/deploy-manual.patch
+# or copy the files from the pack into place, then:
+sudo chmod +x scripts/*.sh templates/docker-entrypoint.sh
+sudo bash scripts/add-swap.sh
+./scripts/manual-deploy.sh all
+```
+
+That builds all three apps from their public GitHub repos, starts the
+containers from the local images (no GHCR pull), and reloads Caddy.
+
+Verify:
+
+```bash
+docker compose --project-name deploy ps
+curl -sI https://www.kapillohani.site | head
+curl -sI https://kapillohani.site | head          # 301 to www
+curl -sI https://streaks.kapillohani.site | head
+curl -sI https://t2a.kapillohani.site | head
+docker compose --project-name deploy logs --tail=80 caddy
+```
+
+To rebuild one app later: `./scripts/manual-deploy.sh streaks` (or
+`task-to-api`, `portfolio`).
+
+---
+
 ## 1. Launch the EC2 instance
 
 AWS console, region close to you (e.g. Mumbai `ap-south-1`):

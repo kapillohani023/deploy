@@ -95,6 +95,9 @@ if grep -qE '^POSTGRES_PASSWORD=(CHANGE_ME)?$' "$ENV_FILE"; then
   echo "==> Generated POSTGRES_PASSWORD in $ENV_FILE"
 fi
 
+echo "==> Ensuring swap for Next.js builds on small instances"
+bash "$SCRIPTS_DIR/add-swap.sh" 4
+
 echo "==> Running apply.sh"
 # docker group membership may not be active in this sudo session yet.
 if su - "$DEPLOY_USER" -c "docker info" >/dev/null 2>&1; then

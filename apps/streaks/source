@@ -1,0 +1,4 @@
+REPO=https://github.com/kapillohani023/streaks.git
+BRANCH=main
+# Names of docker build-args whose values come from /opt/apps/env/streaks.env
+BUILD_ARGS=NEXT_PUBLIC_VAPID_PUBLIC_KEY

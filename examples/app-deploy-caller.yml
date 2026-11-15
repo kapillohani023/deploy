@@ -13,6 +13,9 @@ on:
 
 jobs:
   deploy:
+    permissions:
+      contents: read
+      packages: write
     uses: kapillohani023/deploy/.github/workflows/app-deploy.yml@main
     with:
       service: CHANGE_ME          # e.g. streaks, task-to-api, portfolio

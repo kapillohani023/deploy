@@ -68,6 +68,7 @@ cat > "$DIR/compose.yml" <<YAML
 services:
   ${NAME}:
     image: \${${ENV_OVERRIDE}_IMAGE:-${IMAGE}}
+    pull_policy: missing
     restart: unless-stopped
     env_file:
       - /opt/apps/env/${NAME}.env
@@ -112,6 +113,11 @@ fi
   fi
 } > "$DIR/env.example"
 
+cat > "$DIR/source" <<SRC
+REPO=https://github.com/${GHCR_OWNER}/${NAME}.git
+BRANCH=main
+SRC
+
 SCHEME="https://${DOMAIN}"
 cat <<MSG
 
@@ -131,9 +137,10 @@ Next steps:
    set the service name to "${NAME}", and add repo secrets EC2_HOST, EC2_USER, EC2_SSH_KEY.
    Also enable Actions access on kapillohani023/deploy (see README).
    Or copy templates/deploy.yml for a self-contained workflow that does not use workflow_call.
-4. Commit this app folder and push main of the *deploy* repo (Apply workflow rsyncs and
-   reloads Caddy, creates the env file and DB). Then push main of the *app* repo to
-   build and start the container.
+4. Commit this app folder and apply it on the server (git pull in /opt/deploy, or
+   the Apply workflow when Actions is available). Then either run
+   ./scripts/manual-deploy.sh ${NAME} or, when Actions works, push main of the
+   *app* repo to build and start the container.
 5. Fill /opt/apps/env/${NAME}.env on the server (AUTH / API keys as needed).
    Public URL is ${SCHEME}.
 
