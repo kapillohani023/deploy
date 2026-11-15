@@ -78,6 +78,11 @@ for app in $(app_names); do
   extras=$(app_extra_services "$app")
   if image_present "$img"; then
     echo "    up $app ${extras}"
+    # App image is local; still pull public sidecar images (e.g. streaks-cron).
+    for s in $extras; do
+      echo "    pull extra $s"
+      compose pull "$s"
+    done
     # shellcheck disable=SC2086
     compose up -d --no-deps --pull never "$app" $extras
     running+=("$app")

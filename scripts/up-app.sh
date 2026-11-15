@@ -28,7 +28,13 @@ if [ "$NO_PULL" -eq 0 ]; then
   done
   PULL_FLAG=()
 else
-  echo "==> Skipping registry pull (--no-pull)"
+  # Main app image is already on the box (GHCR load/build). Still pull
+  # extras — they are usually public sidecars (e.g. curlimages/curl).
+  echo "==> Skipping registry pull for $service (--no-pull)"
+  for s in "$@"; do
+    echo "==> Pulling extra $s"
+    compose pull "$s"
+  done
   PULL_FLAG=( --pull never )
 fi
 
@@ -36,6 +42,7 @@ echo "==> Recreating $service"
 compose up -d --no-deps --force-recreate --wait "${PULL_FLAG[@]}" "$service"
 if [ $# -gt 0 ]; then
   echo "==> Recreating extras: $*"
-  compose up -d --no-deps "${PULL_FLAG[@]}" "$@"
+  # Extras were pulled above; don't require another registry hit.
+  compose up -d --no-deps --pull never "$@"
 fi
 compose ps "$service" "$@"
