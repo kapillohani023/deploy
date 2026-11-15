@@ -1,0 +1,4 @@
+t2a.kapillohani.site {
+	import site_headers
+	reverse_proxy task-to-api:3000
+}

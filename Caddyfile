@@ -1,0 +1,6 @@
+{
+	email {$CADDY_EMAIL:kapillohani023@gmail.com}
+}
+
+import snippets.caddy
+import apps/*/site.caddy

@@ -1,0 +1,43 @@
+# Project name is always "deploy" (see scripts/lib.sh).
+# App services are not listed here; scripts pass -f apps/<name>/compose.yml
+# so adding a new app does not require editing this file.
+name: deploy
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in /opt/apps/env/.env}
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Not published. Apps reach it as hostname `postgres`.
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      CADDY_EMAIL: ${CADDY_EMAIL:-kapillohani023@gmail.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./snippets.caddy:/etc/caddy/snippets.caddy:ro
+      - ./apps:/etc/caddy/apps:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    # No depends_on apps: Caddy starts (and can obtain certs) before any
+    # app image exists. Missing backends return 502 until that app is deployed.
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

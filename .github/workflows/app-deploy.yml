@@ -1,0 +1,112 @@
+# Reusable workflow for an application repository.
+# The calling repo must allow secrets: inherit (EC2_HOST, EC2_USER, EC2_SSH_KEY,
+# and optionally NEXT_PUBLIC_VAPID_PUBLIC_KEY).
+#
+# The deploy repo must grant this workflow to the caller's repo:
+#   kapillohani023/deploy → Settings → Actions → General → Access
+#   → "Accessible from repositories owned by the user"
+name: App deploy
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        description: Compose service name (and GHCR image name)
+        type: string
+        required: true
+      extra_services:
+        description: Space-separated related services to start after the main one (e.g. streaks-cron)
+        type: string
+        required: false
+        default: ""
+      dockerfile:
+        description: Dockerfile path in the app repo
+        type: string
+        required: false
+        default: Dockerfile
+      context:
+        description: Build context
+        type: string
+        required: false
+        default: "."
+    secrets:
+      EC2_HOST:
+        required: true
+      EC2_USER:
+        required: true
+      EC2_SSH_KEY:
+        required: true
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY:
+        required: false
+
+concurrency:
+  group: app-deploy-${{ inputs.service }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lowercase image name
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+          build-args: |
+            NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start ssh-agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Trust host key
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Pull and recreate on the server
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          SERVICE: ${{ inputs.service }}
+          EXTRA_SERVICES: ${{ inputs.extra_services }}
+          IMAGE_TAG: ${{ env.IMAGE }}:${{ github.sha }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC2029  # image tag is expanded on the runner on purpose
+          HOST="${EC2_USER}@${EC2_HOST}"
+          echo "$GHCR_TOKEN" | ssh "$HOST" 'docker login ghcr.io -u "'"$GHCR_USER"'" --password-stdin'
+          OVERRIDE="$(printf '%s' "$SERVICE" | tr '[:lower:]-' '[:upper:]_')_IMAGE"
+          # Pass the image tag via env; Extra services are already-trusted workflow inputs.
+          ssh "$HOST" "export ${OVERRIDE}=$(printf '%q' "$IMAGE_TAG"); bash /opt/deploy/scripts/up-app.sh $(printf '%q' "$SERVICE") $EXTRA_SERVICES"
+

@@ -1,0 +1,8 @@
+www.kapillohani.site {
+	import site_headers
+	reverse_proxy portfolio:3000
+}
+
+kapillohani.site {
+	redir https://www.kapillohani.site{uri} permanent
+}

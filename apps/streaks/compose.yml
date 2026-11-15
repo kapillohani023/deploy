@@ -1,0 +1,35 @@
+services:
+  streaks:
+    image: ${STREAKS_IMAGE:-ghcr.io/kapillohani023/streaks:latest}
+    restart: unless-stopped
+    env_file:
+      - /opt/apps/env/streaks.env
+    expose:
+      - "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/privacy"]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+
+  streaks-cron:
+    image: curlimages/curl:8.11.1
+    restart: unless-stopped
+    env_file:
+      - /opt/apps/env/streaks.env
+    depends_on:
+      streaks:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "streaks-cron started; pinging /api/cron/reminders every 5 minutes"
+        while true; do
+          curl -fsS -H "Authorization: Bearer $${CRON_SECRET}" http://streaks:3000/api/cron/reminders \
+            || echo "cron tick failed at $$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          sleep 300
+        done

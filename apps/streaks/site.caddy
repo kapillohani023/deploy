@@ -1,0 +1,4 @@
+streaks.kapillohani.site {
+	import site_headers
+	reverse_proxy streaks:3000
+}
